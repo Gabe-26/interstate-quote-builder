@@ -1094,7 +1094,7 @@ function printQuote() {
     '</style></head><body>' +
 
     /* Outer padding wrapper — brings frame in from edges */
-    '<div style="width:100%;min-height:99vh;padding:10px;display:flex;flex-direction:column">' +
+    '<div style="width:100%;height:99vh;padding:10px;display:flex;flex-direction:column;overflow:hidden">' +
 
       /* OUTER BORDER */
       '<div style="flex:1;border:3px solid #444;padding:4px;display:flex;flex-direction:column;min-height:0">' +
@@ -1103,7 +1103,7 @@ function printQuote() {
         '<div style="flex:1;border:1.5px solid #999;display:flex;flex-direction:column;min-height:0">' +
 
           /* TOP: FRONT VIEW | BACK VIEW */
-          '<div style="display:flex;flex:1;min-height:340px;border-bottom:1.5px solid #444">' +
+          '<div style="display:flex;flex:1;min-height:0;border-bottom:1.5px solid #444">' +
 
             /* IMAGE 1 PANEL */
             '<div style="flex:1;display:flex;flex-direction:column;border-right:1.5px solid #444">' +
@@ -1127,7 +1127,7 @@ function printQuote() {
           '</div>' +
 
           /* BOTTOM SECTION */
-          '<div style="display:flex;align-items:flex-end;padding:10px 10px 8px 10px;gap:16px">' +
+          '<div style="display:flex;align-items:flex-end;padding:10px 10px 8px 10px;gap:16px;flex-shrink:0">' +
 
             /* BREAKDOWN TABLE — double border */
             '<div style="min-width:380px;width:380px">' +
