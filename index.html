@@ -1232,43 +1232,45 @@ function printQuote() {
     '*{box-sizing:border-box;margin:0;padding:0}' +
     'body{font-family:Arial,Helvetica,sans-serif;background:#fff;color:#111}' +
     '@page{size:letter landscape;margin:6mm 8mm}' +
+    '@media print{html,body{height:100%;overflow:hidden}' +
+    'body>div{page-break-after:avoid;page-break-inside:avoid}}' +
     '</style></head><body>' +
 
     /* Outer padding wrapper — brings frame in from edges */
-    '<div style="width:100%;min-height:99vh;padding:10px;display:flex;flex-direction:column">' +
+    '<div style="width:100%;height:99vh;max-height:99vh;padding:10px;display:flex;flex-direction:column;overflow:hidden">' +
 
       /* OUTER BORDER */
-      '<div style="flex:1;border:3px solid #444;padding:4px;display:flex;flex-direction:column;min-height:0">' +
+      '<div style="flex:1;min-height:0;border:3px solid #444;padding:4px;display:flex;flex-direction:column">' +
 
         /* INNER BORDER */
-        '<div style="flex:1;border:1.5px solid #999;display:flex;flex-direction:column;min-height:0">' +
+        '<div style="flex:1;min-height:0;border:1.5px solid #999;display:flex;flex-direction:column">' +
 
-          /* TOP: FRONT VIEW | BACK VIEW */
-          '<div style="display:flex;flex:1;min-height:340px;border-bottom:1.5px solid #444">' +
+          /* TOP: IMAGE PANELS — flex:1 with min-height:0 so they shrink freely */
+          '<div style="display:flex;flex:1;min-height:0;border-bottom:1.5px solid #444">' +
 
             /* IMAGE 1 PANEL */
-            '<div style="flex:1;display:flex;flex-direction:column;border-right:1.5px solid #444">' +
-              '<div style="padding:5px 0;text-align:center;border-bottom:1.5px solid #444">' +
+            '<div style="flex:1;min-width:0;display:flex;flex-direction:column;border-right:1.5px solid #444">' +
+              '<div style="flex-shrink:0;padding:5px 0;text-align:center;border-bottom:1.5px solid #444">' +
                 '<span style="font-size:15px;font-weight:900;color:#1a6b3a;letter-spacing:1px">ITEM PREVIEW</span>' +
               '</div>' +
-              '<div style="flex:1;display:flex;align-items:center;justify-content:center;padding:8px">' +
-                (imgSrc1 ? '<img src="' + imgSrc1 + '" style="max-width:100%;max-height:100%;object-fit:contain"/>' : '') +
+              '<div style="flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:8px;overflow:hidden">' +
+                (imgSrc1 ? '<img src="' + imgSrc1 + '" style="max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block"/>' : '') +
               '</div>' +
             '</div>' +
 
             /* IMAGE 2 PANEL */
-            '<div style="flex:1;display:flex;flex-direction:column">' +
-              '<div style="padding:5px 0;text-align:center;border-bottom:1.5px solid #444">' +
+            '<div style="flex:1;min-width:0;display:flex;flex-direction:column">' +
+              '<div style="flex-shrink:0;padding:5px 0;text-align:center;border-bottom:1.5px solid #444">' +
                 '<span style="font-size:15px;font-weight:900;color:#1a6b3a;letter-spacing:1px">ITEM PREVIEW</span>' +
               '</div>' +
-              '<div style="flex:1;display:flex;align-items:center;justify-content:center;padding:8px">' +
-                (imgSrc2 ? '<img src="' + imgSrc2 + '" style="max-width:100%;max-height:100%;object-fit:contain"/>' : '') +
+              '<div style="flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:8px;overflow:hidden">' +
+                (imgSrc2 ? '<img src="' + imgSrc2 + '" style="max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block"/>' : '') +
               '</div>' +
             '</div>' +
           '</div>' +
 
-          /* BOTTOM SECTION */
-          '<div style="display:flex;align-items:flex-end;padding:10px 10px 8px 10px;gap:16px">' +
+          /* BOTTOM SECTION — flex-shrink:0 so it takes only what it needs, never grows */
+          '<div style="flex-shrink:0;display:flex;align-items:flex-end;padding:10px 10px 8px 10px;gap:16px">' +
 
             /* BREAKDOWN TABLE — double border */
             '<div style="min-width:380px;width:380px">' +
