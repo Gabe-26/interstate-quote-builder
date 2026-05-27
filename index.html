@@ -1191,7 +1191,7 @@ function printQuote() {
   var matRowsHtml = rows.filter(function(r) { return r.item; }).map(function(r) {
     var isSO = !!r.item.so;
     var rowBg = isSO ? 'background:#fffbeb;' : '';
-    var soTag = isSO ? ' <span style="font-size:8px;font-weight:800;background:#ffc107;color:#5a3e00;border-radius:3px;padding:1px 4px;vertical-align:middle">SO</span>' : '';
+    var soTag = isSO ? ' <span style="font-size:11px;font-weight:900;background:#ffc107;color:#5a3e00;border-radius:4px;padding:2px 7px;vertical-align:middle;-webkit-print-color-adjust:exact;print-color-adjust:exact">SO</span>' : '';
     return '<tr>' +
       '<td style="padding:5px 8px;border:1px solid #ccc;text-align:center;font-size:12px;' + rowBg + '">' + r.qty + ' Pcs</td>' +
       '<td style="padding:5px 8px;border:1px solid #ccc;text-align:center;font-size:12px;color:#111;' + rowBg + '">' + (cleanDesc(r.item.d) || r.item.c) + soTag + '</td>' +
@@ -1230,7 +1230,7 @@ function printQuote() {
   var html = '<!DOCTYPE html><html><head><title>Quote' + (cust ? ' \u2014 ' + cust : '') + '</title>' +
     '<style>' +
     '*{box-sizing:border-box;margin:0;padding:0}' +
-    'body{font-family:Arial,Helvetica,sans-serif;background:#fff;color:#111}' +
+    'body{font-family:Arial,Helvetica,sans-serif;background:#fff;color:#111;-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
     '@page{size:letter landscape;margin:6mm 8mm}' +
     '@media print{html,body{height:100%;overflow:hidden}' +
     'body>div{page-break-after:avoid;page-break-inside:avoid}}' +
