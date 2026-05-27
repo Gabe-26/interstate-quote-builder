@@ -1191,7 +1191,7 @@ function printQuote() {
   var matRowsHtml = rows.filter(function(r) { return r.item; }).map(function(r) {
     var isSO = !!r.item.so;
     var rowBg = isSO ? 'background:#fffbeb;' : '';
-    var soTag = isSO ? ' <span style="font-size:11px;font-weight:900;background:#ffc107;color:#5a3e00;border-radius:4px;padding:2px 7px;vertical-align:middle;-webkit-print-color-adjust:exact;print-color-adjust:exact">SO</span>' : '';
+    var soTag = isSO ? ' <span style="font-size:8px;font-weight:900;background:#ffc107;color:#5a3e00;border-radius:4px;padding:2px 7px;vertical-align:middle;-webkit-print-color-adjust:exact;print-color-adjust:exact">SO</span>' : '';
     return '<tr>' +
       '<td style="padding:5px 8px;border:1px solid #ccc;text-align:center;font-size:12px;' + rowBg + '">' + r.qty + ' Pcs</td>' +
       '<td style="padding:5px 8px;border:1px solid #ccc;text-align:center;font-size:12px;color:#111;' + rowBg + '">' + (cleanDesc(r.item.d) || r.item.c) + soTag + '</td>' +
