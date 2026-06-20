@@ -1228,7 +1228,7 @@ function printQuote() {
     (order ? '<span>Order #: ' + order + '</span>' : '') +
     '</div>' : '';
 
-  var html = '<!DOCTYPE html><html><head><title>Quote' + (cust ? ' \u2014 ' + cust : '') + '</title>' +
+  var html = '<!DOCTYPE html><html><head><title>Quote' + (order ? ' (' + order + ')' : '') + (cust ? ' \u2014 ' + cust : '') + '</title>' +
     '<style>' +
     '*{box-sizing:border-box;margin:0;padding:0}' +
     'body{font-family:Arial,Helvetica,sans-serif;background:#fff;color:#111;-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
