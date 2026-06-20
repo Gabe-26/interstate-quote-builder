@@ -418,7 +418,7 @@ html,body{height:100%;font-family:'Barlow',sans-serif;font-size:14px;color:var(-
       </div>
       <div class="table-wrap">
         <table class="data-table">
-          <thead><tr><th style="width:140px">Code</th><th>Description</th><th style="text-align:right;width:90px">Price</th><th style="width:40px"></th></tr></thead>
+          <thead><tr><th style="width:130px">Code</th><th>Description</th><th style="text-align:right;width:90px">Price</th><th style="width:220px;text-align:center;font-size:10px;letter-spacing:.3px">Group / Order</th></tr></thead>
           <tbody id="rmTableBody"></tbody>
         </table>
       </div>
@@ -514,7 +514,7 @@ var DEFAULT_RAW_MATERIALS = [
   'RC263','RC264','RC268','RC2610','RC26S','RC2810',
   'RCC1410','RCC148','RCC1610','RCC168','RC188','RCC268','RCC2610','RCC288',
   'WARCH36','WARCH42','WARCH48','WARCH548','WARCH60','WARCH560'
-];
+].map(function(c){return{code:c,color:null};});
 function loadData() {
   const pb = localStorage.getItem('iv_pricebook');
   const cl = localStorage.getItem('iv_customers');
@@ -524,6 +524,8 @@ function loadData() {
   CUSTOMERS = cl ? JSON.parse(cl) : JSON.parse(JSON.stringify(BASE_CUSTOMERS));
   SPECIAL_ORDERS = so ? JSON.parse(so) : [];
   RAW_MATERIALS = rm ? JSON.parse(rm) : DEFAULT_RAW_MATERIALS.slice();
+  // Migrate old string format to objects
+  RAW_MATERIALS = RAW_MATERIALS.map(function(i){return typeof i==='string'?{code:i,color:null}:i;});
   // Round all prices to nearest whole dollar
   PRICEBOOK.forEach(function(i) { i.p = Math.ceil(i.p); });
 }
@@ -1040,6 +1042,22 @@ function renderSOPreview() {
 }
 
 // ── RAW MATERIALS REFERENCE ──
+var RM_COLOR_OPTS = [
+  { hex:'#fdba74', label:'Orange' },
+  { hex:'#86efac', label:'Green' },
+  { hex:'#a5f3fc', label:'Teal' },
+  { hex:'#f0e8d0', label:'Cream' },
+  { hex:'#c7e0c7', label:'Sage' },
+  { hex:'#fca5a5', label:'Red' },
+  { hex:'#fef08a', label:'Yellow' },
+  { hex:'#f9fafb', label:'None' }
+];
+function rmSwatches(idx, currentColor) {
+  return RM_COLOR_OPTS.map(function(opt) {
+    var active = currentColor === opt.hex;
+    return '<span onclick="setRmColor(' + idx + ',\'' + opt.hex + '\')" title="' + opt.label + '" style="display:inline-block;width:14px;height:14px;background:' + opt.hex + ';border-radius:50%;cursor:pointer;margin:0 1px;vertical-align:middle;border:' + (active ? '2px solid #111' : '1.5px solid #aaa') + ';box-shadow:' + (active ? '0 0 0 1px #111' : 'none') + '"></span>';
+  }).join('');
+}
 function renderRawMaterials() {
   var tb = document.getElementById('rmTableBody');
   if (!tb) return;
@@ -1056,16 +1074,23 @@ function renderRawMaterials() {
   }
 
   // Price book items
-  RAW_MATERIALS.forEach(function(code, idx) {
-    var item = PRICEBOOK.find(function(i) { return i.c.toUpperCase() === code.toUpperCase(); });
-    var desc = item ? cleanDesc(item.d) : '<span style="color:var(--g400);font-style:italic">Not found in price book</span>';
-    var price = item ? fmt(Math.ceil(item.p)) : '—';
+  RAW_MATERIALS.forEach(function(item, idx) {
+    var pb = PRICEBOOK.find(function(i){return i.c.toUpperCase()===item.code.toUpperCase();});
+    var desc = pb ? cleanDesc(pb.d) : '<span style="color:var(--g400);font-style:italic">Not found in price book</span>';
+    var price = pb ? fmt(Math.ceil(pb.p)) : '—';
+    var rowColor = item.color || getRmRowColor(item.code);
     var tr = document.createElement('tr');
+    tr.style.background = rowColor;
     tr.innerHTML =
-      '<td style="font-family:monospace;font-weight:700;color:var(--green-dark);font-size:11px">' + code + '</td>' +
+      '<td style="font-family:monospace;font-weight:700;color:var(--green-dark);font-size:11px">' + item.code + '</td>' +
       '<td>' + desc + '</td>' +
       '<td style="text-align:right;font-weight:600">' + price + '</td>' +
-      '<td style="text-align:center"><button class="del-btn" onclick="removeRawMaterial(' + idx + ')" title="Remove">✕</button></td>';
+      '<td style="text-align:center;white-space:nowrap;padding:3px 6px">' +
+        '<button class="del-btn" onclick="moveRmItem(' + idx + ',-1)" title="Move up" style="font-size:10px;padding:1px 4px;margin-right:2px">▲</button>' +
+        '<button class="del-btn" onclick="moveRmItem(' + idx + ',1)" title="Move down" style="font-size:10px;padding:1px 4px;margin-right:6px">▼</button>' +
+        rmSwatches(idx, item.color) +
+        '<button class="del-btn" onclick="removeRawMaterial(' + idx + ')" title="Remove" style="margin-left:6px">✕</button>' +
+      '</td>';
     tb.appendChild(tr);
   });
 
@@ -1091,9 +1116,9 @@ function addRawMaterial() {
   var code = inp.value.trim().toUpperCase();
   var status = document.getElementById('rmAddStatus');
   if (!code) { status.textContent = 'Enter a code first.'; status.style.color = 'var(--red)'; return; }
-  if (RAW_MATERIALS.indexOf(code) > -1) { status.textContent = code + ' is already in the list.'; status.style.color = 'var(--red)'; return; }
+  if (RAW_MATERIALS.some(function(i){return i.code===code;})) { status.textContent = code + ' is already in the list.'; status.style.color = 'var(--red)'; return; }
   var item = PRICEBOOK.find(function(i) { return i.c.toUpperCase() === code; });
-  RAW_MATERIALS.push(code);
+  RAW_MATERIALS.push({ code: code, color: null });
   saveData();
   renderRawMaterials();
   inp.value = '';
@@ -1112,6 +1137,21 @@ function removeRawMaterial(idx) {
   saveData();
   renderRawMaterials();
 }
+function setRmColor(idx, hex) {
+  // Toggle off if clicking the already-active color
+  RAW_MATERIALS[idx].color = RAW_MATERIALS[idx].color === hex ? null : hex;
+  saveData();
+  renderRawMaterials();
+}
+function moveRmItem(idx, dir) {
+  var newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= RAW_MATERIALS.length) return;
+  var tmp = RAW_MATERIALS[idx];
+  RAW_MATERIALS[idx] = RAW_MATERIALS[newIdx];
+  RAW_MATERIALS[newIdx] = tmp;
+  saveData();
+  renderRawMaterials();
+}
 function getRmRowColor(code) {
   var c = code.toUpperCase();
   if (/^WARCH/.test(c))                              return '#fef08a'; // yellow   — Arbor tops
@@ -1127,13 +1167,13 @@ function getRmRowColor(code) {
   return '#f9fafb';
 }
 function printRawMaterials() {
-  var rows2 = RAW_MATERIALS.map(function(code) {
-    var item = PRICEBOOK.find(function(i) { return i.c.toUpperCase() === code.toUpperCase(); });
+  var rows2 = RAW_MATERIALS.map(function(item) {
+    var pb = PRICEBOOK.find(function(i) { return i.c.toUpperCase() === item.code.toUpperCase(); });
     return {
-      code: code,
-      desc: item ? cleanDesc(item.d) : 'Not found in price book',
-      price: item ? '$ ' + Math.ceil(item.p) + '.00' : '—',
-      color: getRmRowColor(code)
+      code: item.code,
+      desc: pb ? cleanDesc(pb.d) : 'Not found in price book',
+      price: pb ? '$ ' + Math.ceil(pb.p) + '.00' : '—',
+      color: item.color || getRmRowColor(item.code)
     };
   });
 
