@@ -1513,7 +1513,7 @@ function printQuote() {
   var imgSrc2 = (document.getElementById('imgPreview2') && document.getElementById('imgPreview2').src && document.getElementById('imgPreview2').style.display !== 'none') ? document.getElementById('imgPreview2').src : '';
   var mk = parseFloat(document.getElementById('markupPct').value) || 0;
   var mat = 0, lab = 0;
-  rows.forEach(function(r) { if (r.item) mat += r.qty * r.item.p; });
+  rows.forEach(function(r) { if (r.item) mat += lineTotal(r.qty, r.item); });
   laborRows.forEach(function(r) { lab += calcLaborTotal(r); });
   var base = mat + lab, mka = base * mk / 100, grand = base + mka;
   var dateStr = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
@@ -1522,10 +1522,11 @@ function printQuote() {
     var isSO = !!r.item.so;
     var rowBg = isSO ? 'background:#fffbeb;' : '';
     var soTag = isSO ? ' <span style="font-size:8px;font-weight:900;background:#ffc107;color:#5a3e00;border-radius:4px;padding:2px 7px;vertical-align:middle;-webkit-print-color-adjust:exact;print-color-adjust:exact">SO</span>' : '';
+    var qtyUnit = r.item.u === 'ft' ? 'LF' : 'Pcs';
     return '<tr>' +
-      '<td style="padding:5px 8px;border:1px solid #ccc;text-align:center;font-size:12px;' + rowBg + '">' + r.qty + ' Pcs</td>' +
+      '<td style="padding:5px 8px;border:1px solid #ccc;text-align:center;font-size:12px;' + rowBg + '">' + r.qty + ' ' + qtyUnit + '</td>' +
       '<td style="padding:5px 8px;border:1px solid #ccc;text-align:center;font-size:12px;color:#111;' + rowBg + '">' + (cleanDesc(r.item.d) || r.item.c) + soTag + '</td>' +
-      '<td style="padding:5px 8px;border:1px solid #ccc;text-align:center;font-size:12px;color:#111;white-space:nowrap;' + rowBg + '">$ ' + Math.ceil(r.qty * r.item.p) + '</td>' +
+      '<td style="padding:5px 8px;border:1px solid #ccc;text-align:center;font-size:12px;color:#111;white-space:nowrap;' + rowBg + '">$ ' + lineTotal(r.qty, r.item) + '</td>' +
       '</tr>';
   }).join('');
 
