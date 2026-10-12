@@ -174,6 +174,13 @@ html,body{height:100%;font-family:'Barlow',sans-serif;font-size:14px;color:var(-
       </div>
     </div>
 
+    <!-- BREAKDOWN TABS -->
+    <div class="card">
+      <div class="card-body" style="padding:8px 10px">
+        <div id="bdTabs" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"></div>
+      </div>
+    </div>
+
     <!-- MATERIALS -->
     <div class="card">
       <div class="card-hd">
@@ -226,8 +233,8 @@ html,body{height:100%;font-family:'Barlow',sans-serif;font-size:14px;color:var(-
       <div class="card-hd"><span class="card-title">Notes &amp; Specifications</span></div>
       <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
         <div class="field-group">
-          <label class="field-label">Breakdown Title (e.g. "Gate", "Section A")</label>
-          <input class="field-input" id="breakdownTitle" placeholder='e.g. Gate • Section A • Double Drive' />
+          <label class="field-label">Breakdown Title (e.g. "Gate", "Section A") — for the selected breakdown tab</label>
+          <input class="field-input" id="breakdownTitle" placeholder='e.g. Gate • Section A • Double Drive' oninput="renderBdTabs()" />
         </div>
         <textarea class="field-textarea" id="notesField" rows="2" placeholder="Special instructions, material specs, site conditions…"></textarea>
       </div>
@@ -527,6 +534,88 @@ var LABOR_TYPES = {
 let rowId = 0, laborId = 0;
 const rows = [], laborRows = [];
 
+// ── BREAKDOWNS ── (the active breakdown's data lives in rows/laborRows; the rest are stored here)
+var MAX_BD = 3;
+var BREAKDOWNS = [{ title: '', rows: [], labor: [] }];
+var activeBd = 0;
+function snapshotActive() {
+  var b = BREAKDOWNS[activeBd];
+  if (!b) return;
+  var t = document.getElementById('breakdownTitle');
+  b.title = t ? t.value : '';
+  b.rows = rows.slice();
+  b.labor = laborRows.slice();
+}
+function allBreakdowns() { snapshotActive(); return BREAKDOWNS; }
+function loadBd(i) {
+  var b = BREAKDOWNS[i];
+  rows.length = 0; Array.prototype.push.apply(rows, b.rows);
+  laborRows.length = 0; Array.prototype.push.apply(laborRows, b.labor);
+  document.getElementById('breakdownTitle').value = b.title || '';
+  renderRows(); renderLaborRows(); renderBdTabs();
+}
+function switchBd(i) {
+  if (i === activeBd) return;
+  snapshotActive();
+  activeBd = i;
+  loadBd(i);
+}
+function addBd() {
+  if (BREAKDOWNS.length >= MAX_BD) return;
+  snapshotActive();
+  BREAKDOWNS.push({ title: '', rows: [], labor: [] });
+  activeBd = BREAKDOWNS.length - 1;
+  loadBd(activeBd);
+  addRow(); addLaborRow(); focusLastRow();
+}
+function removeBd(i) {
+  if (BREAKDOWNS.length <= 1) return;
+  snapshotActive();
+  var label = (BREAKDOWNS[i].title || '').trim() || ('Breakdown ' + (i + 1));
+  if (!confirm('Remove "' + label + '" and everything in it?')) return;
+  if (i === activeBd) {
+    BREAKDOWNS.splice(i, 1);
+    activeBd = Math.max(0, i - 1);
+    loadBd(activeBd);
+  } else {
+    BREAKDOWNS.splice(i, 1);
+    if (i < activeBd) activeBd--;
+    renderBdTabs(); recalc();
+  }
+}
+function renderBdTabs() {
+  var el = document.getElementById('bdTabs');
+  if (!el) return;
+  snapshotActive();
+  el.innerHTML = '';
+  BREAKDOWNS.forEach(function(b, i) {
+    var active = i === activeBd;
+    var bg = active ? 'var(--green)' : '#fff', fg = active ? '#fff' : 'var(--green)';
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;align-items:center;border:1px solid var(--green);border-radius:6px;overflow:hidden';
+    var btn = document.createElement('button');
+    btn.textContent = (b.title && b.title.trim()) || ('Breakdown ' + (i + 1));
+    btn.style.cssText = 'font-size:12px;font-weight:700;padding:6px 12px;border:none;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:' + bg + ';color:' + fg;
+    btn.onclick = function() { switchBd(i); };
+    wrap.appendChild(btn);
+    if (BREAKDOWNS.length > 1) {
+      var x = document.createElement('button');
+      x.textContent = '✕'; x.title = 'Remove this breakdown';
+      x.style.cssText = 'font-size:11px;padding:6px 8px;border:none;cursor:pointer;background:' + bg + ';color:' + fg;
+      x.onclick = function() { removeBd(i); };
+      wrap.appendChild(x);
+    }
+    el.appendChild(wrap);
+  });
+  if (BREAKDOWNS.length < MAX_BD) {
+    var add = document.createElement('button');
+    add.textContent = '+ Breakdown';
+    add.style.cssText = 'font-size:12px;font-weight:700;padding:6px 12px;border:1px dashed var(--green);border-radius:6px;cursor:pointer;background:#fff;color:var(--green)';
+    add.onclick = addBd;
+    el.appendChild(add);
+  }
+}
+
 var DEFAULT_RAW_MATERIALS = [
   'WC84','WC85','WC104','WC105','WC106','WC124','WC125',
   'ACQ64','ACQ84','ACQ85','ACQ104','ACQ105','ACQ124','ACQ125','ACQ126',
@@ -569,6 +658,7 @@ window.addEventListener('DOMContentLoaded', function() {
   loadData();
   addRow();
   addLaborRow();
+  renderBdTabs();
   // Focus QTY of first row on load
   setTimeout(function() {
     var firstQty = document.getElementById('aq-1');
@@ -949,8 +1039,10 @@ function toggleLaborUnit2(id) {
 // ── RECALC ──
 function recalc() {
   var mat = 0, lab = 0, lines = 0, units = 0;
-  rows.forEach(function(r) { if (r.item) { mat += lineTotal(r.qty, r.item); lines++; units += r.qty; } });
-  laborRows.forEach(function(r) { lab += calcLaborTotal(r); });
+  allBreakdowns().forEach(function(b) {
+    b.rows.forEach(function(r) { if (r.item) { mat += lineTotal(r.qty, r.item); lines++; units += r.qty; } });
+    b.labor.forEach(function(r) { lab += calcLaborTotal(r); });
+  });
   var mk = parseFloat(document.getElementById('markupPct').value) || 0;
   var mka = (mat + lab) * mk / 100, grand = mat + lab + mka;
   document.getElementById('matSubtotal').textContent = fmt(mat);
@@ -981,13 +1073,14 @@ function doGlobalSearch(q) {
 function clearAll() {
   if (!confirm('Clear all and start a new quote?')) return;
   rows.length = 0; laborRows.length = 0; rowId = 0; laborId = 0;
+  BREAKDOWNS.length = 0; BREAKDOWNS.push({ title: '', rows: [], labor: [] }); activeBd = 0;
   ['custName','custCode','orderNum','notesField','breakdownTitle'].forEach(function(id) { document.getElementById(id).value = ''; });
   clearImg(1, { stopPropagation: function(){} });
   clearImg(2, { stopPropagation: function(){} });
   document.getElementById('custSearch').value = '';
   document.getElementById('custSelectedChip').innerHTML = '';
   document.getElementById('markupPct').value = '0';
-  renderRows(); renderLaborRows();
+  renderRows(); renderLaborRows(); renderBdTabs();
 }
 
 // ── MANAGE: COUNTS & PREVIEWS ──
@@ -1508,45 +1601,86 @@ function printQuote() {
   var code = document.getElementById('custCode').value || '';
   var order = document.getElementById('orderNum').value || '';
   var notes = document.getElementById('notesField').value || '';
-  var bdTitle = document.getElementById('breakdownTitle').value.trim();
   var imgSrc1 = (document.getElementById('imgPreview1') && document.getElementById('imgPreview1').src && document.getElementById('imgPreview1').style.display !== 'none') ? document.getElementById('imgPreview1').src : '';
   var imgSrc2 = (document.getElementById('imgPreview2') && document.getElementById('imgPreview2').src && document.getElementById('imgPreview2').style.display !== 'none') ? document.getElementById('imgPreview2').src : '';
   var mk = parseFloat(document.getElementById('markupPct').value) || 0;
-  var mat = 0, lab = 0;
-  rows.forEach(function(r) { if (r.item) mat += lineTotal(r.qty, r.item); });
-  laborRows.forEach(function(r) { lab += calcLaborTotal(r); });
-  var base = mat + lab, mka = base * mk / 100, grand = base + mka;
   var dateStr = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
 
-  var matRowsHtml = rows.filter(function(r) { return r.item; }).map(function(r) {
-    var isSO = !!r.item.so;
-    var rowBg = isSO ? 'background:#fffbeb;' : '';
-    var soTag = isSO ? ' <span style="font-size:8px;font-weight:900;background:#ffc107;color:#5a3e00;border-radius:4px;padding:2px 7px;vertical-align:middle;-webkit-print-color-adjust:exact;print-color-adjust:exact">SO</span>' : '';
-    var qtyUnit = r.item.u === 'ft' ? 'LF' : 'Pcs';
-    return '<tr>' +
-      '<td style="padding:5px 8px;border:1px solid #ccc;text-align:center;font-size:12px;' + rowBg + '">' + r.qty + ' ' + qtyUnit + '</td>' +
-      '<td style="padding:5px 8px;border:1px solid #ccc;text-align:center;font-size:12px;color:#111;' + rowBg + '">' + (cleanDesc(r.item.d) || r.item.c) + soTag + '</td>' +
-      '<td style="padding:5px 8px;border:1px solid #ccc;text-align:center;font-size:12px;color:#111;white-space:nowrap;' + rowBg + '">$ ' + lineTotal(r.qty, r.item) + '</td>' +
-      '</tr>';
-  }).join('');
+  // Breakdowns to print — skip empty extra ones, but always keep at least the first
+  var allBds = allBreakdowns();
+  var bds = allBds.filter(function(b) { return b.rows.some(function(r) { return r.item; }) || b.labor.length; });
+  if (!bds.length) bds = [allBds[0]];
+  var multi = bds.length > 1;
+  // Compact sizing only when several breakdowns share the page (a single breakdown keeps the original sizing)
+  var cp = multi ? '3px 4px' : '5px 8px';
+  var cf = multi ? '10px' : '12px';
+  var mf = multi ? '9px' : '11px';
 
-  var labRowsHtml = laborRows.map(function(r) {
-    var qty = r.qty !== undefined ? r.qty : (r.mins || r.hrs || 0);
-    var unit = r.unit || 'mins';
-    var unitLabel = unit === 'hrs' ? 'Hr' : 'Min';
-    var total = unit === 'hrs' ? Math.ceil(qty * r.rate * 60) : Math.ceil(qty * r.rate);
-    var descLabel = r.desc + ' Labor';
-    return '<tr>' +
-      '<td style="padding:5px 8px;border:1px solid #ccc;text-align:center;font-size:12px">' + qty + ' ' + unitLabel + '</td>' +
-      '<td style="padding:5px 8px;border:1px solid #ccc;text-align:center;font-size:12px;color:#111">' + descLabel + '</td>' +
-      '<td style="padding:5px 8px;border:1px solid #ccc;text-align:center;font-size:12px;color:#111;white-space:nowrap">$ ' + total + '</td>' +
-      '</tr>';
-  }).join('');
+  function buildBdHtml(bd) {
+    var bdTitle = (bd.title || '').trim();
+    var mat = 0, lab = 0;
+    bd.rows.forEach(function(r) { if (r.item) mat += lineTotal(r.qty, r.item); });
+    bd.labor.forEach(function(r) { lab += calcLaborTotal(r); });
+    var base = mat + lab, mka = base * mk / 100, grand = base + mka;
 
-  var markupRow = (mk > 0) ?
-    '<tr><td style="padding:5px 8px;border:1px solid #ccc;text-align:center;font-size:11px"></td>' +
-    '<td style="padding:5px 8px;border:1px solid #ccc;text-align:center;font-size:11px;color:#cc0000">Markup ' + mk + '%</td>' +
-    '<td style="padding:5px 8px;border:1px solid #ccc;text-align:center;font-size:11px;color:#cc0000">$ ' + Math.ceil(mka) + '</td></tr>' : '';
+    var matRowsHtml = bd.rows.filter(function(r) { return r.item; }).map(function(r) {
+      var isSO = !!r.item.so;
+      var rowBg = isSO ? 'background:#fffbeb;' : '';
+      var soTag = isSO ? ' <span style="font-size:8px;font-weight:900;background:#ffc107;color:#5a3e00;border-radius:4px;padding:2px 7px;vertical-align:middle;-webkit-print-color-adjust:exact;print-color-adjust:exact">SO</span>' : '';
+      var qtyUnit = r.item.u === 'ft' ? 'LF' : 'Pcs';
+      return '<tr>' +
+        '<td style="padding:' + cp + ';border:1px solid #ccc;text-align:center;font-size:' + cf + ';' + rowBg + '">' + r.qty + ' ' + qtyUnit + '</td>' +
+        '<td style="padding:' + cp + ';border:1px solid #ccc;text-align:center;font-size:' + cf + ';color:#111;' + rowBg + '">' + (cleanDesc(r.item.d) || r.item.c) + soTag + '</td>' +
+        '<td style="padding:' + cp + ';border:1px solid #ccc;text-align:center;font-size:' + cf + ';color:#111;white-space:nowrap;' + rowBg + '">$ ' + lineTotal(r.qty, r.item) + '</td>' +
+        '</tr>';
+    }).join('');
+
+    var labRowsHtml = bd.labor.map(function(r) {
+      var qty = r.qty !== undefined ? r.qty : (r.mins || r.hrs || 0);
+      var unit = r.unit || 'mins';
+      var unitLabel = unit === 'hrs' ? 'Hr' : 'Min';
+      var total = unit === 'hrs' ? Math.ceil(qty * r.rate * 60) : Math.ceil(qty * r.rate);
+      var descLabel = r.desc + ' Labor';
+      return '<tr>' +
+        '<td style="padding:' + cp + ';border:1px solid #ccc;text-align:center;font-size:' + cf + '">' + qty + ' ' + unitLabel + '</td>' +
+        '<td style="padding:' + cp + ';border:1px solid #ccc;text-align:center;font-size:' + cf + ';color:#111">' + descLabel + '</td>' +
+        '<td style="padding:' + cp + ';border:1px solid #ccc;text-align:center;font-size:' + cf + ';color:#111;white-space:nowrap">$ ' + total + '</td>' +
+        '</tr>';
+    }).join('');
+
+    var markupRow = (mk > 0) ?
+      '<tr><td style="padding:' + cp + ';border:1px solid #ccc;text-align:center;font-size:' + mf + '"></td>' +
+      '<td style="padding:' + cp + ';border:1px solid #ccc;text-align:center;font-size:' + mf + ';color:#cc0000">Markup ' + mk + '%</td>' +
+      '<td style="padding:' + cp + ';border:1px solid #ccc;text-align:center;font-size:' + mf + ';color:#cc0000">$ ' + Math.ceil(mka) + '</td></tr>' : '';
+
+    return '<div style="' + (multi ? 'flex:1;min-width:0' : 'min-width:380px;width:380px') + '">' +
+      '<div style="border:2px solid #333">' +
+        '<div style="border:1px solid #888;margin:3px">' +
+          '<div style="padding:' + (multi ? '5px' : '7px') + ';text-align:center;border-bottom:2px solid #333">' +
+            '<span style="font-size:' + (multi ? '13px' : '16px') + ';font-weight:900;color:#1a6b3a;letter-spacing:1px">' + (bdTitle ? bdTitle + ' BREAKDOWN' : 'BREAKDOWN') + '</span>' +
+          '</div>' +
+          '<table style="width:100%;border-collapse:collapse">' +
+            '<tr>' +
+              '<td style="padding:' + cp + ';border:1px solid #ccc;font-size:' + (multi ? '9px' : '10px') + ';font-weight:700;text-align:center;width:' + (multi ? '46px' : '72px') + '">QTY.</td>' +
+              '<td style="padding:' + cp + ';border:1px solid #ccc;font-size:' + (multi ? '9px' : '10px') + ';font-weight:700;text-align:center;color:#cc0000">MATERIAL</td>' +
+              '<td style="padding:' + cp + ';border:1px solid #ccc;font-size:' + (multi ? '9px' : '10px') + ';font-weight:700;text-align:center;color:#cc0000;width:' + (multi ? '58px' : '95px') + '">PRICE</td>' +
+            '</tr>' +
+            matRowsHtml + labRowsHtml + markupRow +
+            '<tr>' +
+              '<td style="padding:' + (multi ? '5px 4px' : '8px 6px') + ';border:1.5px solid #333;text-align:center;font-size:' + (multi ? '11px' : '13px') + ';font-weight:900">TOTAL</td>' +
+              '<td style="padding:' + (multi ? '5px 4px' : '8px 6px') + ';border:1.5px solid #333;text-align:center;font-size:' + (multi ? '11px' : '13px') + ';font-weight:900">COST</td>' +
+              '<td style="padding:' + (multi ? '5px 4px' : '8px 6px') + ';border:1.5px solid #333;text-align:center;font-size:' + (multi ? '13px' : '15px') + ';font-weight:900;white-space:nowrap">$ ' + Math.ceil(grand) + '</td>' +
+            '</tr>' +
+          '</table>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+  var bdTablesHtml = bds.map(buildBdHtml).join('');
+  // Several breakdowns share the left side of the bottom section; a single one keeps the original layout
+  var bottomLeftHtml = multi
+    ? '<div style="flex:1;min-width:0;display:flex;align-items:flex-end;gap:10px">' + bdTablesHtml + '</div>'
+    : bdTablesHtml + '<div style="flex:1"></div>';
 
   var notesHtml = notes ?
     '<div style="padding:4px 7px;border-top:1px solid #ccc;font-size:9px;color:#555"><b>Notes:</b> ' + notes + '</div>' : '';
@@ -1603,32 +1737,8 @@ function printQuote() {
           /* BOTTOM SECTION — flex-shrink:0 so it takes only what it needs, never grows */
           '<div style="flex-shrink:0;display:flex;align-items:flex-end;padding:10px 10px 8px 10px;gap:16px">' +
 
-            /* BREAKDOWN TABLE — double border */
-            '<div style="min-width:380px;width:380px">' +
-              '<div style="border:2px solid #333">' +
-                '<div style="border:1px solid #888;margin:3px">' +
-                  '<div style="padding:7px;text-align:center;border-bottom:2px solid #333">' +
-                    '<span style="font-size:16px;font-weight:900;color:#1a6b3a;letter-spacing:1px">' + (bdTitle ? bdTitle + ' BREAKDOWN' : 'BREAKDOWN') + '</span>' +
-                  '</div>' +
-                  '<table style="width:100%;border-collapse:collapse">' +
-                    '<tr>' +
-                      '<td style="padding:5px 8px;border:1px solid #ccc;font-size:10px;font-weight:700;text-align:center;width:72px">QTY.</td>' +
-                      '<td style="padding:5px 8px;border:1px solid #ccc;font-size:10px;font-weight:700;text-align:center;color:#cc0000">MATERIAL</td>' +
-                      '<td style="padding:5px 8px;border:1px solid #ccc;font-size:10px;font-weight:700;text-align:center;color:#cc0000;width:95px">PRICE</td>' +
-                    '</tr>' +
-                    matRowsHtml + labRowsHtml + markupRow +
-                    '<tr>' +
-                      '<td style="padding:8px 6px;border:1.5px solid #333;text-align:center;font-size:13px;font-weight:900">TOTAL</td>' +
-                      '<td style="padding:8px 6px;border:1.5px solid #333;text-align:center;font-size:13px;font-weight:900">COST</td>' +
-                      '<td style="padding:8px 6px;border:1.5px solid #333;text-align:center;font-size:15px;font-weight:900;white-space:nowrap">$ ' + Math.ceil(grand) + '</td>' +
-                    '</tr>' +
-                  '</table>' +
-                  '</div>' +
-              '</div>' +
-            '</div>' +
-
-            /* SPACER */
-            '<div style="flex:1"></div>' +
+            /* BREAKDOWN TABLE(S) */
+            bottomLeftHtml +
 
             /* RIGHT COLUMN: customer box on top, logo box below */
             '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">' +
